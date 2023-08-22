@@ -12,6 +12,9 @@ env:
   DOCKER_REGISTRY: ghcr.io/jonohill
   DOCKER_REPO: browser-video-player
 
+permissions:
+  packages: write
+
 jobs:
 
   arm_runner:
