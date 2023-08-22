@@ -1,0 +1,126 @@
+name: build docker image
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+env:
+  DOCKER_REGISTRY: ghcr.io/jonohill
+  DOCKER_REPO: browser-video-player
+
+jobs:
+
+  arm_runner:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start arm64 runner
+        run: |
+          curl -vfs https://circleci.com/api/v2/project/gh/jonohill/circle-gh-runner/pipeline \
+            -H 'Accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -H 'Circle-Token: ${{ secrets.CCI_TOKEN }}' \
+            --data-binary '{ "branch": "main", "parameters": { "GH_REPO": "${{ github.repository }}" } }'
+
+  build_x64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to ghcr
+        uses: docker/login-action@v2
+        if: ${{ github.ref == 'refs/heads/main' }}
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max          
+          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}/linux/amd64:${{ github.run_number }}"          
+
+  build_arm64:
+    runs-on: [self-hosted, linux, arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to ghcr
+        uses: docker/login-action@v2
+        if: ${{ github.ref == 'refs/heads/main' }}
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max          
+          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}/linux/arm64:${{ github.run_number }}"     
+
+  build:
+    runs-on: ubuntu-latest
+
+    needs: [build_x64, build_arm64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Read version
+        id: read_version
+        run: |
+          echo "::set-output name=VERSION::$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')"
+      
+      - name: (Try to) tag
+        id: create_tag
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          git tag "${{ steps.read_version.outputs.VERSION }}"
+          git push --tags        
+
+      - name: Login to ghcr
+        uses: docker/login-action@v2
+        if: ${{ github.ref == 'refs/heads/main' }}
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - run:
+          echo "FROM $DOCKER_REGISTRY/$DOCKER_REPO/\$TARGETPLATFORM:${{ github.run_number }}" > Dockerfile
+
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: "${{ env.DOCKER_REPO }}:${{ steps.read_version.outputs.VERSION }},${{ env.DOCKER_REPO }}:latest"
