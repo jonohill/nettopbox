@@ -46,6 +46,7 @@ The config file will be read from the working directory, or pass the path as the
 | NTB_BASE_URL | base_url | The URL that Plex will use to connect to nettopbox. | http://localhost:8080 |
 | NTB_PORT | port | The port to listen on. | 8080 |
 | NTB_TUNER_COUNT | tuner_count | The number of virtual tuners to expose to Plex. | 10 |
+| NTB_HTTP_TIMEOUT | http_timeout | Timeout for HTTP requests in seconds (only for the M3U playlist currently) | 10 |
 
 ## Limitations
 

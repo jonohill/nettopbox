@@ -7,6 +7,8 @@ pub struct Config {
     pub base_url: Url,
     pub port: u16,
     pub tuner_count: u16,
+    /// Timeout in seconds for HTTP requests to IPTV provider
+    pub http_timeout: u64,
 }
 
 impl Default for Config {
@@ -16,6 +18,7 @@ impl Default for Config {
             base_url: "http://localhost:8080".parse().unwrap(),
             port: 8080,
             tuner_count: 10,
+            http_timeout: 10,
         }
     }
 }

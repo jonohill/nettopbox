@@ -95,7 +95,13 @@ async fn main() -> std::io::Result<()> {
     let iptv_url = config.iptv_url.clone().unwrap();
 
     log::info!("Downloading m3u from {}...", iptv_url);
-    let playlist: Playlist = reqwest::get(iptv_url)
+    let http_client = reqwest::ClientBuilder::new()
+        .timeout(std::time::Duration::from_secs(config.http_timeout))
+        .build()
+        .unwrap();
+
+    let playlist: Playlist = http_client.get(iptv_url)
+        .send()
         .await
         .expect("Failed to download m3u")
         .text()
