@@ -10,7 +10,7 @@ on:
 
 env:
   DOCKER_REGISTRY: ghcr.io/jonohill
-  DOCKER_REPO: browser-video-player
+  DOCKER_REPO: nettopbox
 
 permissions:
   packages: write
