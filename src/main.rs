@@ -46,6 +46,7 @@ async fn get_lineup(config: Data<Config>, playlist: Data<Playlist>) -> impl Resp
 #[get("/stream/{stream_id}")]
 async fn get_stream(
     playlist: Data<Playlist>,
+    config: Data<Config>,
     stream_id: web::Path<String>,
 ) -> Result<impl Responder, Box<dyn std::error::Error>> {
     let url = get_url_for_stream_id(&playlist, &stream_id);
@@ -55,7 +56,7 @@ async fn get_stream(
     }
 
     let url: Url = url.unwrap().parse()?;
-    let stream = ffmpeg::stream_from_media_url(&url)?;
+    let stream = ffmpeg::stream_from_media_url(&url, config.http_proxy.as_ref())?;
 
     let response = HttpResponse::Ok()
         .content_type("video/mpeg; codecs=\"avc1.4D401E\"")
@@ -79,9 +80,16 @@ async fn main() -> std::io::Result<()> {
         config_file_path
     );
 
+    // map any proxy vars to http_proxy
+    // reqwest will see these anyway, the config will be passed to ffmpeg
+    let proxy_env = Env::raw()
+        .filter(|k| ["all_proxy", "http_proxy", "https_proxy"].contains(&k.as_str()))
+        .map(|_| "http_proxy".into());
+
     let config: Config = Figment::from(Serialized::defaults(Config::default()))
         .merge(Yaml::file(config_file_path))
         .merge(Env::prefixed("NTB_"))
+        .merge(proxy_env)
         .extract()
         .expect("Failed to load config");
 

@@ -9,6 +9,7 @@ pub struct Config {
     pub tuner_count: u16,
     /// Timeout in seconds for HTTP requests to IPTV provider
     pub http_timeout: u64,
+    pub http_proxy: Option<Url>,
 }
 
 impl Default for Config {
@@ -19,6 +20,7 @@ impl Default for Config {
             port: 8080,
             tuner_count: 10,
             http_timeout: 10,
+            http_proxy: None,
         }
     }
 }
