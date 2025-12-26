@@ -1,0 +1,42 @@
+# Build stage for nettopbox (using Alpine for musl compatibility)
+FROM rust:alpine AS build
+
+# Install build dependencies for Alpine
+RUN apk add --no-cache musl-dev
+
+WORKDIR /usr/src/nettopbox
+COPY . .
+
+RUN cargo install --path .
+
+# Runtime stage using hotio/base with VPN support
+FROM ghcr.io/hotio/base:alpinevpn
+
+# Install ffmpeg (required by nettopbox)
+RUN apk add --no-cache ffmpeg
+
+# Copy the nettopbox binary
+COPY --from=build /usr/local/cargo/bin/nettopbox /app/nettopbox
+
+# Create the s6-overlay service directory for nettopbox
+RUN mkdir -p /etc/s6-overlay/s6-rc.d/nettopbox \
+    && mkdir -p /etc/s6-overlay/s6-rc.d/user/contents.d
+
+# Create the service type file (longrun = long-running service)
+RUN echo "longrun" > /etc/s6-overlay/s6-rc.d/nettopbox/type
+
+# Create the run script for the nettopbox service
+RUN printf '#!/command/with-contenv bash\nexec /app/nettopbox /config/config.yaml\n' > /etc/s6-overlay/s6-rc.d/nettopbox/run \
+    && chmod +x /etc/s6-overlay/s6-rc.d/nettopbox/run
+
+# Enable the nettopbox service
+RUN touch /etc/s6-overlay/s6-rc.d/user/contents.d/nettopbox
+
+# Expose the default HDHomeRun ports
+# HTTP port for device discovery and streaming
+EXPOSE 5004
+# HDHR discovery port (UDP)
+EXPOSE 65001/udp
+
+# Volume for configuration
+VOLUME ["/config"]

@@ -55,7 +55,19 @@ jobs:
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max          
-          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}/linux/amd64:${{ github.run_number }}"          
+          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}/linux/amd64:${{ github.run_number }}"
+
+      - name: Build and push VPN
+        id: docker_build_vpn
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile.vpn
+          platforms: linux/amd64
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max          
+          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}/linux/amd64:${{ github.run_number }}-vpn"
 
   build_arm64:
     runs-on: [self-hosted, linux, arm64]
@@ -83,7 +95,19 @@ jobs:
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max          
-          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}/linux/arm64:${{ github.run_number }}"     
+          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}/linux/arm64:${{ github.run_number }}"
+
+      - name: Build and push VPN
+        id: docker_build_vpn
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile.vpn
+          platforms: linux/arm64
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max          
+          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}/linux/arm64:${{ github.run_number }}-vpn"     
 
   build:
     runs-on: ubuntu-latest
@@ -128,3 +152,16 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}:${{ steps.read_version.outputs.VERSION }},${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}:latest"
+
+      - run:
+          echo "FROM $DOCKER_REGISTRY/$DOCKER_REPO/\$TARGETPLATFORM:${{ github.run_number }}-vpn" > Dockerfile.manifest
+
+      - name: Build and push VPN
+        id: docker_build_vpn
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile.manifest
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}:${{ steps.read_version.outputs.VERSION }}-vpn,${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}:vpn"

@@ -7,7 +7,7 @@ mod m3u;
 use actix_web::{
     get,
     web::{self, Data},
-    App, HttpResponse, HttpServer, Responder,
+    App, HttpResponse, HttpServer, Responder, middleware::Logger,
 };
 use figment::{
     providers::{Env, Format, Serialized, Yaml},
@@ -130,6 +130,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .wrap(Logger::default())
             .app_data(Data::new(config.clone()))
             .app_data(Data::new(playlist.clone()))
             .service(discover)
