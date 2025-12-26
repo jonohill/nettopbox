@@ -1,8 +1,8 @@
 # Build stage for nettopbox (using Alpine for musl compatibility)
 FROM rust:alpine AS build
 
-# Install build dependencies for Alpine
-RUN apk add --no-cache musl-dev
+# Install build dependencies for Alpine (including OpenSSL)
+RUN apk add --no-cache musl-dev openssl-dev openssl-libs-static pkgconfig
 
 WORKDIR /usr/src/nettopbox
 COPY . .
