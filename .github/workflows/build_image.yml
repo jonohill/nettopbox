@@ -18,19 +18,17 @@ permissions:
 
 jobs:
 
-  arm_runner:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Start arm64 runner
-        run: |
-          curl -vfs https://circleci.com/api/v2/project/gh/jonohill/circle-gh-runner/pipeline \
-            -H 'Accept: application/json' \
-            -H 'Content-Type: application/json' \
-            -H 'Circle-Token: ${{ secrets.CCI_TOKEN }}' \
-            --data-binary '{ "branch": "main", "parameters": { "GH_REPO": "${{ github.repository }}" } }'
-
   build_x64:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - variant: standard
+            dockerfile: Dockerfile
+            tag_suffix: ""
+          - variant: vpn
+            dockerfile: Dockerfile.vpn
+            tag_suffix: "-vpn"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -51,26 +49,24 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: .
+          file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max          
-          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}/linux/amd64:${{ github.run_number }}"
-
-      - name: Build and push VPN
-        id: docker_build_vpn
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: Dockerfile.vpn
-          platforms: linux/amd64
-          push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max          
-          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}/linux/amd64:${{ github.run_number }}-vpn"
+          cache-from: type=gha,scope=${{ matrix.variant }}-amd64
+          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}-amd64
+          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}/linux/amd64:${{ github.run_number }}${{ matrix.tag_suffix }}"
 
   build_arm64:
-    runs-on: [self-hosted, linux, arm64]
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      matrix:
+        include:
+          - variant: standard
+            dockerfile: Dockerfile
+            tag_suffix: ""
+          - variant: vpn
+            dockerfile: Dockerfile.vpn
+            tag_suffix: "-vpn"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -91,23 +87,12 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: .
+          file: ${{ matrix.dockerfile }}
           platforms: linux/arm64
           push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max          
-          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}/linux/arm64:${{ github.run_number }}"
-
-      - name: Build and push VPN
-        id: docker_build_vpn
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: Dockerfile.vpn
-          platforms: linux/arm64
-          push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max          
-          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}/linux/arm64:${{ github.run_number }}-vpn"     
+          cache-from: type=gha,scope=${{ matrix.variant }}-arm64
+          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}-arm64
+          tags: "${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPO }}/linux/arm64:${{ github.run_number }}${{ matrix.tag_suffix }}"     
 
   build:
     runs-on: ubuntu-latest
